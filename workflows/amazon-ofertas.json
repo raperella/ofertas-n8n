@@ -1,0 +1,510 @@
+{
+  "name": "Cadastro de Produtos/Ofertas",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        48
+      ],
+      "id": "2e7b0fe8-a05c-478d-ba45-e85714e9d523",
+      "name": "Trigger - Início do Fluxo"
+    },
+    {
+      "parameters": {
+        "url": "https://9f132f9c-e358-438f-95a6-36f39eefeb0b.mock.pstmn.io/offers",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        48
+      ],
+      "id": "293e94d0-3f9e-4655-bb2e-a088834ced7e",
+      "name": "HTTP - Buscar Ofertas Amazon"
+    },
+    {
+      "parameters": {
+        "jsCode": "const produtos = $json.data;\n\nreturn produtos.map(produto => ({\n  json: {\n    asin: produto.asin,\n    store: \"amazon\",\n    title: produto.title,\n    brand: produto.brand,\n    category: produto.category,\n    price: Number(produto.price),\n    old_price: Number(produto.old_price),\n    discount: Number(produto.discount),\n    currency: produto.currency,\n    rating: Number(produto.rating),\n    reviews: Number(produto.reviews),\n    image: produto.image,\n    url: produto.url,\n    seller: produto.seller,\n    prime: produto.prime,\n    available: produto.available,\n    published: false,\n    captured_at: new Date().toISOString()\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        48
+      ],
+      "id": "8d8ef2ca-7808-432f-9000-3bc4666256f0",
+      "name": "Code - Normalizar Dados do Produto"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        624,
+        48
+      ],
+      "id": "bb2a230f-70ee-4b5e-abca-9ae8a5a3f616",
+      "name": "Loop - Processar Cada Produto",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "products",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "external_id",
+              "keyValue": "={{ $json.asin }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        912,
+        80
+      ],
+      "id": "6ab07152-7002-42b3-8111-0c39cc6cb696",
+      "name": "DB - Verificar Produto Existente",
+      "retryOnFail": false,
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6Evlu9M1FpbW3WeL",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5f2ccd0f-1865-47aa-a448-d993fc1c175e",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1072,
+        80
+      ],
+      "id": "46095e8c-fc88-4595-98b6-f38c49a02285",
+      "name": "IF - Produto Já Cadastrado?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0ec680c9-5110-462a-8057-3b349dc61120",
+              "name": "product_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        80
+      ],
+      "id": "e2298fd4-f172-4f77-8e47-a5021c42879a",
+      "name": "Set - Definir Product_id (Existente)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "431fc0eb-feec-4ad3-8ce4-670ee3f20692",
+              "name": "product_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        256
+      ],
+      "id": "bff25012-ef72-4178-a937-b3828558d299",
+      "name": "Set - Definir Product_id (Novo)"
+    },
+    {
+      "parameters": {
+        "tableId": "products",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "external_id",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.asin }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.title }}"
+            },
+            {
+              "fieldId": "image",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.image }}"
+            },
+            {
+              "fieldId": "url",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.url }}"
+            },
+            {
+              "fieldId": "store",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.seller }}"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.captured_at }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.captured_at }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        256
+      ],
+      "id": "992e2a0f-a51b-4f38-aecf-d2b95a4c9fe7",
+      "name": "DB - Criar Produto",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6Evlu9M1FpbW3WeL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "offers",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "product_id",
+              "fieldValue": "={{ $json.product_id }}"
+            },
+            {
+              "fieldId": "price",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.price }}"
+            },
+            {
+              "fieldId": "old_price",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.old_price }}"
+            },
+            {
+              "fieldId": "discount",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.discount }}"
+            },
+            {
+              "fieldId": "affiliate_url",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.url }}"
+            },
+            {
+              "fieldId": "published",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.published }}"
+            },
+            {
+              "fieldId": "available",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.available }}"
+            },
+            {
+              "fieldId": "captured_at",
+              "fieldValue": "={{ $('Loop - Processar Cada Produto').item.json.captured_at }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        256
+      ],
+      "id": "7d018f7b-9bd6-4f11-a42f-82520d7894b1",
+      "name": "DB - Criar Oferta",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6Evlu9M1FpbW3WeL",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2144,
+        32
+      ],
+      "id": "9671412c-8996-4a9c-a9c0-53cb67f125c0",
+      "name": "NoOp - Fim do Loop"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Coleta de Dados\nBusca as ofertas atuais na API da Amazon e normaliza os campos necessários (preço, título, imagem, ASIN, link).",
+        "height": 592,
+        "width": 624,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -64,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "3795a21e-ae0a-4e5c-9030-6aad1db58626",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Loop de Processamento\nItera item a item sobre a lista de produtos retornada. Cada iteração passa pela verificação de existência antes de decidir criar produto novo ou reaproveitar o existente.",
+        "height": 592,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "232ed0c2-581b-4a4b-ae52-c68b3d3c4fb3",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Verificação e Deduplicação\nConsulta o banco para saber se o produto (por ASIN/SKU) já está cadastrado. Evita duplicidade de produtos ao registrar apenas novas ofertas para produtos existentes.",
+        "height": 592,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        864,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "b166f7b0-9f3d-4780-aebf-0f0d2f23027c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Persistência\nCria o produto (se novo) e sempre cria um novo registro de oferta associado — histórico de preços/ofertas por produto.",
+        "height": 592,
+        "width": 704
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1344,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "ab13ce9a-3731-4c2c-a97f-4662690a3a55",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## TODO / Próximos Passos\nPróxima fase: disparar notificação da oferta criada para grupo de WhatsApp/Telegram (filtrar por variação mínima de preço ou desconto %).",
+        "height": 592,
+        "width": 304,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2048,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "ef4de400-2db0-48b8-a789-bec87252c766",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger - Início do Fluxo": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Buscar Ofertas Amazon",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Buscar Ofertas Amazon": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalizar Dados do Produto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalizar Dados do Produto": {
+      "main": [
+        [
+          {
+            "node": "Loop - Processar Cada Produto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop - Processar Cada Produto": {
+      "main": [
+        [
+          {
+            "node": "NoOp - Fim do Loop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DB - Verificar Produto Existente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB - Verificar Produto Existente": {
+      "main": [
+        [
+          {
+            "node": "IF - Produto Já Cadastrado?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF - Produto Já Cadastrado?": {
+      "main": [
+        [
+          {
+            "node": "Set - Definir Product_id (Existente)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DB - Criar Produto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Definir Product_id (Existente)": {
+      "main": [
+        [
+          {
+            "node": "DB - Criar Oferta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Definir Product_id (Novo)": {
+      "main": [
+        [
+          {
+            "node": "DB - Criar Oferta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB - Criar Produto": {
+      "main": [
+        [
+          {
+            "node": "Set - Definir Product_id (Novo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB - Criar Oferta": {
+      "main": [
+        [
+          {
+            "node": "Loop - Processar Cada Produto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e88a3bfd-fdcb-474b-9f85-09faff558b42",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2fd39515a021cc872fe4ccd622ed40ac5175f7f742c91cf8ed922341934a1ebd"
+  },
+  "id": "VPfJjCQO7HO7eDZ5",
+  "tags": []
+}
