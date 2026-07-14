@@ -1,0 +1,13 @@
+# Credenciais e variáveis de ambiente
+.env
+.env.*
+*credentials*
+
+# Arquivos temporários / sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Exports acidentais / backups
+*.bak
+*.tmp
